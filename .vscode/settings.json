@@ -5,5 +5,10 @@
   "[toml]": {
     "editor.defaultFormatter": "tamasfe.even-better-toml"
   },
-  "solidity.formatter": "forge"
+  "solidity.formatter": "forge",
+  "security.olympix.project.includePath": "",
+  "security.olympix.project.testsPath": "",
+  "security.olympix.project.analyzeWholeProject": true,
+  "slither.solcPath": "",
+  "slither.hiddenDetectors": []
 }

@@ -7,29 +7,35 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "./Interfaces/IWETH.sol";
+import "./RewardToken.sol";
 
 contract Swapper is Ownable2Step {
     using SafeERC20 for IERC20;
 
     bytes32 public merkleRoot;
 
-    ISwapRouter public immutable swapRouter;
-    IWETH public immutable weth;
+    RewardToken public rewardToken;
+    ISwapRouter public immutable SWAP_ROUTER;
+    IWETH public immutable WETH;
 
     error Zero_Address();
     error Invalid_Proof();
     error Incorrect_Value();
+    error Approval_Failed();
 
     event UpdatedMerkleRoot(bytes32 merkleRoot);
 
     constructor(
         address _uniswapV3SwapRouter,
-        address _wethAddress
+        address _wethAddress,
+        address _rewardToken
     ) Ownable(msg.sender) {
         isZeroAddress(_uniswapV3SwapRouter);
         isZeroAddress(_wethAddress);
-        swapRouter = ISwapRouter(_uniswapV3SwapRouter);
-        weth = IWETH(_wethAddress);
+        isZeroAddress(_rewardToken);
+        rewardToken = RewardToken(_rewardToken);
+        SWAP_ROUTER = ISwapRouter(_uniswapV3SwapRouter);
+        WETH = IWETH(_wethAddress);
     }
 
     function performSwap(
@@ -45,11 +51,11 @@ contract Swapper is Ownable2Step {
         bytes32 node = keccak256(abi.encodePacked(msg.sender));
         if(!MerkleProof.verify(_merkleProof, merkleRoot, node)) revert Invalid_Proof();
 
-        if (_tokenIn == address(weth)) {
+        if (_tokenIn == address(WETH)) {
             if(msg.value != _amountIn) revert Incorrect_Value();
         } else {
             IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amountIn);
-            IERC20(_tokenIn).approve(address(swapRouter), _amountIn);
+            if(!IERC20(_tokenIn).approve(address(SWAP_ROUTER), _amountIn)) revert Approval_Failed();
         }
 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
@@ -63,12 +69,12 @@ contract Swapper is Ownable2Step {
             sqrtPriceLimitX96: 0 
         });
 
-        amountReceived = swapRouter.exactInputSingle{value: _tokenIn == address(weth) ? _amountIn : 0}(params);
+        amountReceived = SWAP_ROUTER.exactInputSingle{value: _tokenIn == address(WETH) ? _amountIn : 0}(params);
+        rewardToken.mint(_recipient, amountReceived);
     }
 
     function updateMerkleRoot(bytes32 _newMerkleRoot) external onlyOwner {
         merkleRoot = _newMerkleRoot;
-
         emit UpdatedMerkleRoot(_newMerkleRoot);
     }
 
