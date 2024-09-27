@@ -64,7 +64,7 @@ contract Swapper is Ownable2Step {
             if (msg.value != _amountIn) revert INCORRECT_VALUE();
         } else {
             IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amountIn);
-            if (!IERC20(_tokenIn).approve(address(SWAP_ROUTER), _amountIn)) revert APPROVAL_FAILED();
+            IERC20(_tokenIn).safeIncreaseAllowance(address(SWAP_ROUTER), _amountIn);
         }
 
         uint256 expectedAmount = quoter.quoteExactInputSingle(_tokenIn, _tokenOut, _poolFee, _amountIn, 0);
