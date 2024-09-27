@@ -7,12 +7,11 @@ import "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "../lib/murky/src/Merkle.sol";
-import "../src/RewardToken.sol";
 import "../src/Swapper.sol";
+import "./Swapper/ETHReverterContract.sol";
 
 contract TestSetup is Test {
 
-    RewardToken public rewardToken;
     Swapper public swapper;
     IERC20 public wEth;
     IQuoter public uniswapQuote;

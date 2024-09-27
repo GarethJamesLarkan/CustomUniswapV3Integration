@@ -3,13 +3,11 @@ pragma solidity >=0.8.25;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
-
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "./Interfaces/IWETH.sol";
-import "./RewardToken.sol";
 
 contract Swapper is Ownable2Step {
     using SafeERC20 for IERC20;

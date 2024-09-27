@@ -5,12 +5,48 @@ import "../TestSetup.sol";
 contract PerformSwapTests is TestSetup {
 
     bytes32[] public aliceProof;
+    bytes32[] public reverterContractProof;
 
     function setUp() public {
         setUpTests();
         setUpMerkle();
 
         aliceProof = merkle.getProof(whitelistedAddresses, 0);
+    }
+
+    function test_FailsIfETHTransferReverts() public {
+        ETHReverterContract reverterContract = new ETHReverterContract();
+        whitelistedAddresses.push(keccak256(abi.encodePacked(address(reverterContract))));
+
+        vm.startPrank(owner);
+        swapper.depositGasFeeReimbursement{value: 1 ether}();
+
+        bytes32 newMerkleRootLocal = merkle.getRoot(whitelistedAddresses);
+        merkleRoot = newMerkleRootLocal;
+        swapper.updateMerkleRoot(newMerkleRootLocal);
+
+        reverterContractProof = merkle.getProof(whitelistedAddresses, 2);
+        vm.stopPrank();
+
+        vm.deal(address(reverterContract), 10 ether);
+
+        vm.startPrank(address(reverterContract));
+        swapper.performSwap{value: 2 ether}(
+            wEthAddress,
+            usdcAddress,
+            address(reverterContract),
+            500,
+            0.001 ether,
+            30 minutes,
+            2 ether,
+            5,
+            reverterContractProof
+        );
+
+        assertEq(swapper.gasFeeReimbursements(address(reverterContract)), 0.001 ether);
+
+        vm.expectRevert(abi.encodeWithSelector(ETH_TRANSFER_FAILED.selector));
+        swapper.withdrawGasFeeReimbursement();
     }
 
     function test_FailsIfAmountOfGasFeesOwedIsMoreThanCurrentReimbursementBalance() public {
