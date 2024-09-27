@@ -3,6 +3,8 @@ pragma solidity >=0.8.25;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
@@ -18,33 +20,75 @@ contract Swapper is Ownable2Step {
     mapping(address account => uint256 amount) public gasFeeReimbursements;
 
     ISwapRouter public immutable SWAP_ROUTER;
-    IQuoter public quoter;
+    IUniswapV3Factory public immutable UNISWAP_V3_FACTORY;
+    IQuoter public immutable QUOTER;
     IWETH public immutable WETH;
 
-    error ZERO_ADDRESS();
-    error INVALID_PROOF();
-    error INCORRECT_VALUE();
-    error APPROVAL_FAILED();
-    error ETH_TRANSFER_FAILED();
-    error INSUFFICIENT_FUNDS();
+    error Zero_Address();
+    error Invalid_Proof();
+    error Incorrect_Value();
+    error Eth_Transfer_Failed();
+    error Insufficient_Funds();
+    error Tokens_Must_Be_Different();
+    error Invalid_Fee_Tier();
+    error Pool_Already_Exists();
 
     event UpdatedMerkleRoot(bytes32 merkleRoot);
     event GasFeeReimbursement(address account, uint256 amount);
     event GasFeeEthDeposited(uint256 amount);
+    event PoolCreated(address pool, address creator, address tokenA, address tokenB, uint160 priceRatio, uint24 fee);
 
-    constructor(address _uniswapV3SwapRouter, address _wethAddress, address _quoterAddress) Ownable(msg.sender) {
+    constructor(
+        address _uniswapV3SwapRouter, 
+        address _uniswapV3Factory,
+        address _wethAddress, 
+        address _quoterAddress
+    ) Ownable(msg.sender) {
         isZeroAddress(_uniswapV3SwapRouter);
+        isZeroAddress(_uniswapV3Factory);
         isZeroAddress(_wethAddress);
         isZeroAddress(_quoterAddress);
         SWAP_ROUTER = ISwapRouter(_uniswapV3SwapRouter);
+        UNISWAP_V3_FACTORY = IUniswapV3Factory(_uniswapV3Factory);
         WETH = IWETH(_wethAddress);
-        quoter = IQuoter(_quoterAddress);
+        QUOTER = IQuoter(_quoterAddress);
     }
 
     //-------------------------------------------------------------------------
     //-------------------------- UNISWAP FUNCTIONS ----------------------------
     //-------------------------------------------------------------------------
 
+    function createAndInitializeUniswapV3Pool(
+        address _tokenA,
+        address _tokenB,
+        uint256 _estimatedGas,
+        uint160 _sqrtPriceX96,
+        uint24 _fee,
+        bytes32[] memory _merkleProof
+    ) external returns (address createdPool) {
+        if (!MerkleProof.verify(_merkleProof, merkleRoot, keccak256(abi.encodePacked(msg.sender)))) {
+            revert Invalid_Proof();
+        }
+        if(_tokenA == _tokenB) {
+            revert Tokens_Must_Be_Different();
+        }
+        if(_fee != 500 && _fee != 3000 && _fee != 10000) {
+            revert Invalid_Fee_Tier();
+        }
+
+        createdPool = UNISWAP_V3_FACTORY.getPool(_tokenA, _tokenB, _fee);
+        if (createdPool != address(0)) {
+            revert Pool_Already_Exists();
+        }
+
+        gasFeeReimbursements[msg.sender] += _estimatedGas;
+
+        createdPool = UNISWAP_V3_FACTORY.createPool(_tokenA, _tokenB, _fee);
+        IUniswapV3Pool(createdPool).initialize(_sqrtPriceX96);
+
+        emit PoolCreated(createdPool, msg.sender, _tokenA, _tokenB, _sqrtPriceX96, _fee);
+    }
+    
     function performSwap(
         address _tokenIn,
         address _tokenOut,
@@ -57,19 +101,19 @@ contract Swapper is Ownable2Step {
         bytes32[] memory _merkleProof
     ) external payable returns (uint256) {
         if (!MerkleProof.verify(_merkleProof, merkleRoot, keccak256(abi.encodePacked(msg.sender)))) {
-            revert INVALID_PROOF();
+            revert Invalid_Proof();
         }
 
         if (_tokenIn == address(WETH)) {
-            if (msg.value != _amountIn) revert INCORRECT_VALUE();
+            if (msg.value != _amountIn) revert Incorrect_Value();
         } else {
             IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amountIn);
             IERC20(_tokenIn).safeIncreaseAllowance(address(SWAP_ROUTER), _amountIn);
         }
 
-        uint256 expectedAmount = quoter.quoteExactInputSingle(_tokenIn, _tokenOut, _poolFee, _amountIn, 0);
+        uint256 expectedAmount = QUOTER.quoteExactInputSingle(_tokenIn, _tokenOut, _poolFee, _amountIn, 0);
         uint256 slippageAmount =
-            ((quoter.quoteExactInputSingle(_tokenIn, _tokenOut, _poolFee, _amountIn, 0)) * _slippageAmount) / 100;
+            ((QUOTER.quoteExactInputSingle(_tokenIn, _tokenOut, _poolFee, _amountIn, 0)) * _slippageAmount) / 100;
 
         gasFeeReimbursements[msg.sender] += _estimatedGas;
 
@@ -94,14 +138,14 @@ contract Swapper is Ownable2Step {
     function withdrawGasFeeReimbursement() external {
         uint256 amount = gasFeeReimbursements[msg.sender];
         if (amount > amountOfEthForGasReimbursement) {
-            revert INSUFFICIENT_FUNDS();
+            revert Insufficient_Funds();
         }
 
         gasFeeReimbursements[msg.sender] = 0;
 
         (bool sent,) = msg.sender.call{value: amount}("");
         if (!sent) {
-            revert ETH_TRANSFER_FAILED();
+            revert Eth_Transfer_Failed();
         }
     }
 
@@ -125,7 +169,7 @@ contract Swapper is Ownable2Step {
 
     function isZeroAddress(address _address) internal pure {
         if (_address == address(0)) {
-            revert ZERO_ADDRESS();
+            revert Zero_Address();
         }
     }
 

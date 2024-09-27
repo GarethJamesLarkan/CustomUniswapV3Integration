@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25;
+
 import "../TestSetup.sol";
 
 contract PerformSwapTests is TestSetup {
@@ -10,14 +11,13 @@ contract PerformSwapTests is TestSetup {
     function setUp() public {
         setUpTests();
         setUpMerkle();
-        //setUpAliceWithDai();
 
         aliceProof = merkle.getProof(whitelistedAddresses, 0);
     }
 
-    function test_FailsIfNotOnWhitelist() public {
+    function test_PerformSwapFailsIfNotOnWhitelist() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(INVALID_PROOF.selector));
+        vm.expectRevert(abi.encodeWithSelector(Invalid_Proof.selector));
         swapper.performSwap{value: 2 ether}(
             wEthAddress,
             usdcAddress,
@@ -33,7 +33,7 @@ contract PerformSwapTests is TestSetup {
 
     function test_FailsIfSwappingFromEthWithIncorrectMsgValue() public {
         vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(INCORRECT_VALUE.selector));
+        vm.expectRevert(abi.encodeWithSelector(Incorrect_Value.selector));
         swapper.performSwap{value: 1 ether}(
             wEthAddress,
             usdcAddress,

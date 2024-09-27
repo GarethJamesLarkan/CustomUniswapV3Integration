@@ -17,11 +17,12 @@ contract UpdateMerkleRootTests is TestSetup {
     }
 
     function test_UpdateMerkleRoot() public {
-        //assertEq(swapper.merkleRoot(), swapper.merkleRoot());
+        bytes32 newMerkleRoot = 0x626c756500000000000000000000000000000000000000000000000000000000;
+        assertEq(swapper.merkleRoot(), 0x0);
         vm.startPrank(owner);
         vm.expectEmit(true, false, false, false);
-        emit UpdatedMerkleRoot(0x0);
-        swapper.updateMerkleRoot(0x0);
-        assertEq(swapper.merkleRoot(), 0x0);
+        emit UpdatedMerkleRoot(newMerkleRoot);
+        swapper.updateMerkleRoot(newMerkleRoot);
+        assertEq(swapper.merkleRoot(), newMerkleRoot);
     }
 }

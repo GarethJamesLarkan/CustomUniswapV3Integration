@@ -45,7 +45,7 @@ contract PerformSwapTests is TestSetup {
 
         assertEq(swapper.gasFeeReimbursements(address(reverterContract)), 0.001 ether);
 
-        vm.expectRevert(abi.encodeWithSelector(ETH_TRANSFER_FAILED.selector));
+        vm.expectRevert(abi.encodeWithSelector(Eth_Transfer_Failed.selector));
         swapper.withdrawGasFeeReimbursement();
     }
 
@@ -63,7 +63,7 @@ contract PerformSwapTests is TestSetup {
             aliceProof
         );
 
-        vm.expectRevert(abi.encodeWithSelector(INSUFFICIENT_FUNDS.selector));
+        vm.expectRevert(abi.encodeWithSelector(Insufficient_Funds.selector));
         swapper.withdrawGasFeeReimbursement();
     }
 

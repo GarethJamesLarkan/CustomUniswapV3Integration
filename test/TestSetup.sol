@@ -5,9 +5,9 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-
 import "../lib/murky/src/Merkle.sol";
 import "../src/Swapper.sol";
+import "./TestERC20.sol";
 import "./Swapper/ETHReverterContract.sol";
 
 contract TestSetup is Test {
@@ -28,17 +28,20 @@ contract TestSetup is Test {
     address usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address daiAddress = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address uniswapRouterV3 = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address uniswapFactoryV3 = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
     address quoterAddress = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
 
     bytes32[] public whitelistedAddresses;
 
     error OwnableUnauthorizedAccount(address account);
-    error ZERO_ADDRESS();
-    error INVALID_PROOF();
-    error INCORRECT_VALUE();
-    error APPROVAL_FAILED();
-    error ETH_TRANSFER_FAILED();
-    error INSUFFICIENT_FUNDS();
+    error Zero_Address();
+    error Invalid_Proof();
+    error Incorrect_Value();
+    error Eth_Transfer_Failed();
+    error Insufficient_Funds();
+    error Tokens_Must_Be_Different();
+    error Invalid_Fee_Tier();
+    error Pool_Already_Exists();
     
     function setUpTests() public {    
         vm.selectFork(vm.createFork(vm.envString("MAINNET_RPC_URL")));
@@ -49,7 +52,7 @@ contract TestSetup is Test {
         vm.deal(robyn, 100 ether);
 
         vm.startPrank(owner);
-        swapper = new Swapper(uniswapRouterV3, wEthAddress, quoterAddress);
+        swapper = new Swapper(uniswapRouterV3, uniswapFactoryV3, wEthAddress, quoterAddress);
 
         wEth = IERC20(wEthAddress);
         uniswapQuote = IQuoter(quoterAddress);
