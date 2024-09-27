@@ -2,6 +2,8 @@
 pragma solidity >=0.8.25;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
@@ -17,8 +19,8 @@ contract Swapper is Ownable2Step {
 
     mapping(address account => uint256 amount) public gasFeeReimbursements;
 
-    RewardToken public rewardToken;
     ISwapRouter public immutable SWAP_ROUTER;
+    IQuoter public quoter;
     IWETH public immutable WETH;
 
     error ZERO_ADDRESS();
@@ -29,14 +31,16 @@ contract Swapper is Ownable2Step {
     error INSUFFICIENT_FUNDS();
 
     event UpdatedMerkleRoot(bytes32 merkleRoot);
+    event GasFeeReimbursement(address account, uint256 amount);
+    event GasFeeEthDeposited(uint256 amount);
 
-    constructor(address _uniswapV3SwapRouter, address _wethAddress, address _rewardToken) Ownable(msg.sender) {
+    constructor(address _uniswapV3SwapRouter, address _wethAddress, address _quoterAddress) Ownable(msg.sender) {
         isZeroAddress(_uniswapV3SwapRouter);
         isZeroAddress(_wethAddress);
-        isZeroAddress(_rewardToken);
-        rewardToken = RewardToken(_rewardToken);
+        isZeroAddress(_quoterAddress);
         SWAP_ROUTER = ISwapRouter(_uniswapV3SwapRouter);
         WETH = IWETH(_wethAddress);
+        quoter = IQuoter(_quoterAddress);
     }
 
     //-------------------------------------------------------------------------
@@ -48,14 +52,15 @@ contract Swapper is Ownable2Step {
         address _tokenOut,
         address _recipient,
         uint24 _poolFee,
-        uint256 _estimatedGasFee,
+        uint256 _estimatedGas,
         uint256 _swapDeadline,
         uint256 _amountIn,
-        uint256 _amountOutMin,
+        uint256 _slippageAmount,
         bytes32[] memory _merkleProof
-    ) external payable returns (uint256 amountReceived) {
-        bytes32 node = keccak256(abi.encodePacked(msg.sender));
-        if (!MerkleProof.verify(_merkleProof, merkleRoot, node)) revert INVALID_PROOF();
+    ) external payable returns (uint256) {
+        if (!MerkleProof.verify(_merkleProof, merkleRoot, keccak256(abi.encodePacked(msg.sender)))) {
+            revert INVALID_PROOF();
+        }
 
         if (_tokenIn == address(WETH)) {
             if (msg.value != _amountIn) revert INCORRECT_VALUE();
@@ -64,7 +69,11 @@ contract Swapper is Ownable2Step {
             if (!IERC20(_tokenIn).approve(address(SWAP_ROUTER), _amountIn)) revert APPROVAL_FAILED();
         }
 
-        gasFeeReimbursements[msg.sender] += _estimatedGasFee;
+        uint256 expectedAmount = quoter.quoteExactInputSingle(_tokenIn, _tokenOut, _poolFee, _amountIn, 0);
+        uint256 slippageAmount =
+            ((quoter.quoteExactInputSingle(_tokenIn, _tokenOut, _poolFee, _amountIn, 0)) * _slippageAmount) / 100;
+
+        gasFeeReimbursements[msg.sender] += _estimatedGas;
 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: _tokenIn,
@@ -73,12 +82,11 @@ contract Swapper is Ownable2Step {
             recipient: _recipient,
             deadline: block.timestamp + _swapDeadline,
             amountIn: _amountIn,
-            amountOutMinimum: _amountOutMin,
+            amountOutMinimum: expectedAmount - slippageAmount,
             sqrtPriceLimitX96: 0
         });
 
-        amountReceived = SWAP_ROUTER.exactInputSingle{value: _tokenIn == address(WETH) ? _amountIn : 0}(params);
-        rewardToken.mint(_recipient, amountReceived);
+        return SWAP_ROUTER.exactInputSingle{value: _tokenIn == address(WETH) ? _amountIn : 0}(params);
     }
 
     //-------------------------------------------------------------------------
@@ -110,6 +118,7 @@ contract Swapper is Ownable2Step {
 
     function depositGasFeeReimbursement() external payable onlyOwner {
         amountOfEthForGasReimbursement += msg.value;
+        emit GasFeeEthDeposited(msg.value);
     }
 
     //-------------------------------------------------------------------------

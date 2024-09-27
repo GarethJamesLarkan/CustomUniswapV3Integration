@@ -9,7 +9,6 @@ contract SwapperConstructorTests is TestSetup {
     }
 
     function test_SwapperVariablesInitiatedCorrectly() public {
-        assertEq(address(swapper.rewardToken()), address(rewardToken));
         assertEq(address(swapper.SWAP_ROUTER()), uniswapRouterV3);
         assertEq(address(swapper.WETH()), wEthAddress);
     }
