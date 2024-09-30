@@ -6,9 +6,9 @@
     "editor.defaultFormatter": "tamasfe.even-better-toml"
   },
   "solidity.formatter": "forge",
-  "security.olympix.project.includePath": "",
-  "security.olympix.project.testsPath": "",
-  "security.olympix.project.analyzeWholeProject": true,
+  "security.olympix.project.includePath": "src/Swapper.sol",
+  "security.olympix.project.testsPath": "/test",
+  "security.olympix.project.analyzeWholeProject": false,
   "slither.solcPath": "",
   "slither.hiddenDetectors": []
 }

@@ -8,10 +8,12 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "./Interfaces/IWETH.sol";
 
-contract Swapper is Ownable2Step {
+contract Swapper is Ownable2Step, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 public amountOfEthForGasReimbursement;
@@ -145,7 +147,7 @@ contract Swapper is Ownable2Step {
     //------------------------ GENERAL PUBLIC FUNCTIONS -----------------------
     //-------------------------------------------------------------------------
 
-    function withdrawGasFeeReimbursement() external {
+    function withdrawGasFeeReimbursement() external nonReentrant {
         uint256 amount = gasFeeReimbursements[msg.sender];
         if (amount > amountOfEthForGasReimbursement) {
             revert Insufficient_Funds();
@@ -185,7 +187,7 @@ contract Swapper is Ownable2Step {
         uint256 _swapDeadline,
         uint256 _amountIn,
         uint256 _slippageAmount
-    ) internal {
+    ) internal pure {
         isZeroAddress(_tokenIn);
         isZeroAddress(_tokenOut);
         isZeroAddress(_recipient);
@@ -212,6 +214,4 @@ contract Swapper is Ownable2Step {
             revert Zero_Address();
         }
     }
-
-    receive() external payable {}
 }
