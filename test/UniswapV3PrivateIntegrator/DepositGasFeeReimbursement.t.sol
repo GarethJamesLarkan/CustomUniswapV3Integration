@@ -13,15 +13,15 @@ contract DepositGasFeeReimbursementTests is TestSetup {
     function test_OnlyOwnerCanCallDepositGasFeeReimbursement() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(alice)));
-        swapper.depositGasFeeReimbursement{value: 10 ether}();
+        uniswapV3PrivateIntegrator.depositGasFeeReimbursement{value: 10 ether}();
     }
 
     function test_DepositGasFeeReimbursementEth() public {
-        assertEq(swapper.amountOfEthForGasReimbursement(), 0);
+        assertEq(uniswapV3PrivateIntegrator.amountOfEthForGasReimbursement(), 0);
         vm.startPrank(owner);
         vm.expectEmit(true, false, false, false);
         emit GasFeeEthDeposited(10 ether);
-        swapper.depositGasFeeReimbursement{value: 10 ether}();
-        assertEq(swapper.amountOfEthForGasReimbursement(), 10 ether);
+        uniswapV3PrivateIntegrator.depositGasFeeReimbursement{value: 10 ether}();
+        assertEq(uniswapV3PrivateIntegrator.amountOfEthForGasReimbursement(), 10 ether);
     }
 }

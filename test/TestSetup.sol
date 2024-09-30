@@ -6,13 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "../lib/murky/src/Merkle.sol";
-import "../src/Swapper.sol";
+import "../src/UniswapV3PrivateIntegrator.sol";
 import "./TestERC20.sol";
-import "./Swapper/ETHReverterContract.sol";
+import "./UniswapV3PrivateIntegrator/ETHReverterContract.sol";
 
 contract TestSetup is Test {
 
-    Swapper public swapper;
+    UniswapV3PrivateIntegrator public uniswapV3PrivateIntegrator;
     IERC20 public wEth;
     IQuoter public uniswapQuote;
     Merkle public merkle;
@@ -55,7 +55,7 @@ contract TestSetup is Test {
         vm.deal(robyn, 100 ether);
 
         vm.startPrank(owner);
-        swapper = new Swapper(uniswapRouterV3, uniswapFactoryV3, wEthAddress, quoterAddress);
+        uniswapV3PrivateIntegrator = new UniswapV3PrivateIntegrator(uniswapRouterV3, uniswapFactoryV3, wEthAddress, quoterAddress);
 
         wEth = IERC20(wEthAddress);
         uniswapQuote = IQuoter(quoterAddress);
@@ -71,6 +71,6 @@ contract TestSetup is Test {
         merkleRoot = merkleRootLocal;
 
         vm.prank(owner);
-        swapper.updateMerkleRoot(merkleRootLocal);
+        uniswapV3PrivateIntegrator.updateMerkleRoot(merkleRootLocal);
     }
 }

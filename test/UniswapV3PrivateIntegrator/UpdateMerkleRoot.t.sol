@@ -13,16 +13,16 @@ contract UpdateMerkleRootTests is TestSetup {
     function test_OnlyOwnerCanCallUpdateMerkleRoot() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(alice)));
-        swapper.updateMerkleRoot(0x0);
+        uniswapV3PrivateIntegrator.updateMerkleRoot(0x0);
     }
 
     function test_UpdateMerkleRoot() public {
         bytes32 newMerkleRoot = 0x626c756500000000000000000000000000000000000000000000000000000000;
-        assertEq(swapper.merkleRoot(), 0x0);
+        assertEq(uniswapV3PrivateIntegrator.merkleRoot(), 0x0);
         vm.startPrank(owner);
         vm.expectEmit(true, false, false, false);
         emit UpdatedMerkleRoot(newMerkleRoot);
-        swapper.updateMerkleRoot(newMerkleRoot);
-        assertEq(swapper.merkleRoot(), newMerkleRoot);
+        uniswapV3PrivateIntegrator.updateMerkleRoot(newMerkleRoot);
+        assertEq(uniswapV3PrivateIntegrator.merkleRoot(), newMerkleRoot);
     }
 }

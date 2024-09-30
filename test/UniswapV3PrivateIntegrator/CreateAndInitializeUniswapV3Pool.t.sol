@@ -23,7 +23,7 @@ contract CreateAndInitializeUniswapV3PoolTests is TestSetup {
     function test_CreatePoolAndInitializeFailsIfNotOnWhitelist() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(Invalid_Proof.selector));
-        swapper.createAndInitializeUniswapV3Pool(
+        uniswapV3PrivateIntegrator.createAndInitializeUniswapV3Pool(
             wEthAddress, 
             usdcAddress, 
             0.1 ether,
@@ -36,7 +36,7 @@ contract CreateAndInitializeUniswapV3PoolTests is TestSetup {
     function test_FailsIfTokensAreIdentical() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(Tokens_Must_Be_Different.selector));
-        swapper.createAndInitializeUniswapV3Pool(
+        uniswapV3PrivateIntegrator.createAndInitializeUniswapV3Pool(
             wEthAddress, 
             wEthAddress, 
             0.1 ether,
@@ -49,7 +49,7 @@ contract CreateAndInitializeUniswapV3PoolTests is TestSetup {
     function test_FailsIfInvalidFeeTier() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(Invalid_Fee_Tier.selector));
-        swapper.createAndInitializeUniswapV3Pool(
+        uniswapV3PrivateIntegrator.createAndInitializeUniswapV3Pool(
             wEthAddress, 
             usdcAddress, 
             0.1 ether,
@@ -61,7 +61,7 @@ contract CreateAndInitializeUniswapV3PoolTests is TestSetup {
 
     function test_FailsIfPoolAlreadyExists() public {
         vm.startPrank(alice);
-        swapper.createAndInitializeUniswapV3Pool(
+        uniswapV3PrivateIntegrator.createAndInitializeUniswapV3Pool(
             address(testToken), 
             usdcAddress, 
             0.1 ether,
@@ -71,7 +71,7 @@ contract CreateAndInitializeUniswapV3PoolTests is TestSetup {
         );
 
         vm.expectRevert(abi.encodeWithSelector(Pool_Already_Exists.selector));
-        swapper.createAndInitializeUniswapV3Pool(
+        uniswapV3PrivateIntegrator.createAndInitializeUniswapV3Pool(
             address(testToken), 
             usdcAddress, 
             0.1 ether,
@@ -82,9 +82,9 @@ contract CreateAndInitializeUniswapV3PoolTests is TestSetup {
     }
 
     function test_UniswapV3PoolIsCreated() public {
-        assertEq(swapper.gasFeeReimbursements(address(alice)), 0);
+        assertEq(uniswapV3PrivateIntegrator.gasFeeReimbursements(address(alice)), 0);
         vm.startPrank(alice);
-        address poolAddress = swapper.createAndInitializeUniswapV3Pool(
+        address poolAddress = uniswapV3PrivateIntegrator.createAndInitializeUniswapV3Pool(
             address(testToken), 
             usdcAddress, 
             0.1 ether,
@@ -92,6 +92,6 @@ contract CreateAndInitializeUniswapV3PoolTests is TestSetup {
             3000, 
             aliceProof
         );
-        assertEq(swapper.gasFeeReimbursements(address(alice)), 0.1 ether);
+        assertEq(uniswapV3PrivateIntegrator.gasFeeReimbursements(address(alice)), 0.1 ether);
     }
 }

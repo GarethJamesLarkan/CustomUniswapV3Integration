@@ -3,6 +3,7 @@ pragma solidity >=0.8.25;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
+//import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -13,7 +14,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "./Interfaces/IWETH.sol";
 
-contract Swapper is Ownable2Step, ReentrancyGuard {
+contract UniswapV3PrivateIntegrator is Ownable2Step, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 public amountOfEthForGasReimbursement;
