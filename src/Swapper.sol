@@ -42,6 +42,7 @@ contract Swapper is Ownable2Step, ReentrancyGuard {
     event GasFeeReimbursement(address account, uint256 amount);
     event GasFeeEthDeposited(uint256 amount);
     event PoolCreated(address pool, address creator, address tokenA, address tokenB, uint160 priceRatio, uint24 fee);
+    event SwapExecuted(address tokenIn, address tokenOut, address recipient, uint256 amountOut);
 
     constructor(address _uniswapV3SwapRouter, address _uniswapV3Factory, address _wethAddress, address _quoterAddress)
         Ownable(msg.sender)
@@ -99,7 +100,7 @@ contract Swapper is Ownable2Step, ReentrancyGuard {
         uint256 _amountIn,
         uint256 _slippageAmount,
         bytes32[] memory _merkleProof
-    ) external payable returns (uint256) {
+    ) external payable returns (uint256 amountOut) {
         validateSwap(
             _tokenIn,
             _tokenOut,
@@ -140,7 +141,9 @@ contract Swapper is Ownable2Step, ReentrancyGuard {
             sqrtPriceLimitX96: 0
         });
 
-        return SWAP_ROUTER.exactInputSingle{value: _tokenIn == address(WETH) ? _amountIn : 0}(params);
+        amountOut = SWAP_ROUTER.exactInputSingle{value: _tokenIn == address(WETH) ? _amountIn : 0}(params);
+
+        emit SwapExecuted(_tokenIn, _tokenOut, _recipient, amountOut);
     }
 
     //-------------------------------------------------------------------------

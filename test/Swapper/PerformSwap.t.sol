@@ -4,6 +4,8 @@ pragma solidity >=0.8.25;
 import "../TestSetup.sol";
 
 contract PerformSwapTests is TestSetup {
+    
+    event SwapExecuted(address tokenIn, address tokenOut, address recipient, uint256 amountOut);
 
     bytes32[] public aliceProof;
     bytes32[] public invalidAliceProof;
@@ -165,6 +167,9 @@ contract PerformSwapTests is TestSetup {
         assertEq(swapper.gasFeeReimbursements(address(alice)), 0);
 
         vm.startPrank(alice);
+        uint256 amount = uniswapQuote.quoteExactInputSingle(wEthAddress, usdcAddress, 500, 2 ether, 0);
+        vm.expectEmit();
+        emit SwapExecuted(wEthAddress, usdcAddress, address(alice), amount);
         uint256 amountReceived = swapper.performSwap{value: 2 ether}(
             wEthAddress,
             usdcAddress,
@@ -190,6 +195,11 @@ contract PerformSwapTests is TestSetup {
         assertEq(swapper.gasFeeReimbursements(address(alice)), 0.001 ether);
 
         IERC20(daiAddress).approve(address(swapper), 2 ether);
+
+        uint256 amount = uniswapQuote.quoteExactInputSingle(daiAddress, wEthAddress, 500, 2 ether, 0);
+        vm.expectEmit();
+        emit SwapExecuted(daiAddress, wEthAddress, address(alice), amount);
+
         uint256 amountReceived = swapper.performSwap{value: 0}(
             daiAddress,
             wEthAddress,
@@ -216,6 +226,11 @@ contract PerformSwapTests is TestSetup {
         assertEq(swapper.gasFeeReimbursements(address(alice)), 0.001 ether);
 
         IERC20(daiAddress).approve(address(swapper), 2 ether);
+
+        uint256 amount = uniswapQuote.quoteExactInputSingle(daiAddress, usdcAddress, 500, 2 ether, 0);
+        vm.expectEmit();
+        emit SwapExecuted(daiAddress, usdcAddress, address(alice), amount);
+
         uint256 amountReceived = swapper.performSwap{value: 0}(
             daiAddress,
             usdcAddress,
