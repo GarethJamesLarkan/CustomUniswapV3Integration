@@ -32,18 +32,18 @@ contract Swapper is Ownable2Step {
     error Tokens_Must_Be_Different();
     error Invalid_Fee_Tier();
     error Pool_Already_Exists();
+    error Invalid_Swap_Deadline();
+    error Invalid_Amount_In();
+    error Invalid_Slippage_Amount();
 
     event UpdatedMerkleRoot(bytes32 merkleRoot);
     event GasFeeReimbursement(address account, uint256 amount);
     event GasFeeEthDeposited(uint256 amount);
     event PoolCreated(address pool, address creator, address tokenA, address tokenB, uint160 priceRatio, uint24 fee);
 
-    constructor(
-        address _uniswapV3SwapRouter, 
-        address _uniswapV3Factory,
-        address _wethAddress, 
-        address _quoterAddress
-    ) Ownable(msg.sender) {
+    constructor(address _uniswapV3SwapRouter, address _uniswapV3Factory, address _wethAddress, address _quoterAddress)
+        Ownable(msg.sender)
+    {
         isZeroAddress(_uniswapV3SwapRouter);
         isZeroAddress(_uniswapV3Factory);
         isZeroAddress(_wethAddress);
@@ -69,12 +69,10 @@ contract Swapper is Ownable2Step {
         if (!MerkleProof.verify(_merkleProof, merkleRoot, keccak256(abi.encodePacked(msg.sender)))) {
             revert Invalid_Proof();
         }
-        if(_tokenA == _tokenB) {
+        if (_tokenA == _tokenB) {
             revert Tokens_Must_Be_Different();
         }
-        if(_fee != 500 && _fee != 3000 && _fee != 10000) {
-            revert Invalid_Fee_Tier();
-        }
+        isValidFeeTier(_fee);
 
         createdPool = UNISWAP_V3_FACTORY.getPool(_tokenA, _tokenB, _fee);
         if (createdPool != address(0)) {
@@ -88,7 +86,7 @@ contract Swapper is Ownable2Step {
 
         emit PoolCreated(createdPool, msg.sender, _tokenA, _tokenB, _sqrtPriceX96, _fee);
     }
-    
+
     function performSwap(
         address _tokenIn,
         address _tokenOut,
@@ -100,6 +98,16 @@ contract Swapper is Ownable2Step {
         uint256 _slippageAmount,
         bytes32[] memory _merkleProof
     ) external payable returns (uint256) {
+        validateSwap(
+            _tokenIn,
+            _tokenOut,
+            _recipient,
+            _poolFee,
+            _swapDeadline,
+            _amountIn,
+            _slippageAmount
+        );
+
         if (!MerkleProof.verify(_merkleProof, merkleRoot, keccak256(abi.encodePacked(msg.sender)))) {
             revert Invalid_Proof();
         }
@@ -108,12 +116,14 @@ contract Swapper is Ownable2Step {
             if (msg.value != _amountIn) revert Incorrect_Value();
         } else {
             IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amountIn);
-            IERC20(_tokenIn).safeIncreaseAllowance(address(SWAP_ROUTER), _amountIn);
+            uint256 allowance = IERC20(_tokenIn).allowance(address(this), address(SWAP_ROUTER));
+            if (allowance < _amountIn) {
+                IERC20(_tokenIn).safeIncreaseAllowance(address(SWAP_ROUTER), _amountIn - allowance);
+            }
         }
 
         uint256 expectedAmount = QUOTER.quoteExactInputSingle(_tokenIn, _tokenOut, _poolFee, _amountIn, 0);
-        uint256 slippageAmount =
-            ((QUOTER.quoteExactInputSingle(_tokenIn, _tokenOut, _poolFee, _amountIn, 0)) * _slippageAmount) / 100;
+        uint256 slippageAmount = (expectedAmount * _slippageAmount) / 100;
 
         gasFeeReimbursements[msg.sender] += _estimatedGas;
 
@@ -166,6 +176,36 @@ contract Swapper is Ownable2Step {
     //-------------------------------------------------------------------------
     //-------------------------- INTERNAL FUNCTIONS ---------------------------
     //-------------------------------------------------------------------------
+
+    function validateSwap(
+        address _tokenIn,
+        address _tokenOut,
+        address _recipient,
+        uint24 _poolFee,
+        uint256 _swapDeadline,
+        uint256 _amountIn,
+        uint256 _slippageAmount
+    ) internal {
+        isZeroAddress(_tokenIn);
+        isZeroAddress(_tokenOut);
+        isZeroAddress(_recipient);
+        isValidFeeTier(_poolFee);
+        if (_swapDeadline > 30 minutes) {
+            revert Invalid_Swap_Deadline();
+        }
+        if (_amountIn == 0) {
+            revert Invalid_Amount_In();
+        }
+        if (_slippageAmount > 100) {
+            revert Invalid_Slippage_Amount();
+        }
+    }
+
+    function isValidFeeTier(uint24 _fee) internal pure {
+        if (_fee != 500 && _fee != 3000 && _fee != 10000) {
+            revert Invalid_Fee_Tier();
+        }
+    }
 
     function isZeroAddress(address _address) internal pure {
         if (_address == address(0)) {

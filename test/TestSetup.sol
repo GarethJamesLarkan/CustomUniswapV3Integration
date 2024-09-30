@@ -42,6 +42,9 @@ contract TestSetup is Test {
     error Tokens_Must_Be_Different();
     error Invalid_Fee_Tier();
     error Pool_Already_Exists();
+    error Invalid_Swap_Deadline();
+    error Invalid_Amount_In();
+    error Invalid_Slippage_Amount();
     
     function setUpTests() public {    
         vm.selectFork(vm.createFork(vm.envString("MAINNET_RPC_URL")));

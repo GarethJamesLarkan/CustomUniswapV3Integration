@@ -15,6 +15,118 @@ contract PerformSwapTests is TestSetup {
         aliceProof = merkle.getProof(whitelistedAddresses, 0);
     }
 
+    function test_FailsIfTokenInIsZeroAddress() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Zero_Address.selector));
+        swapper.performSwap{value: 2 ether}(
+            address(0),
+            usdcAddress,
+            address(alice),
+            500,
+            0.001 ether,
+            30 minutes,
+            2 ether,
+            5,
+            aliceProof
+        );
+    }
+
+    function test_FailsIfTokenOutIsZeroAddress() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Zero_Address.selector));
+        swapper.performSwap{value: 2 ether}(
+            wEthAddress,
+            address(0),
+            address(alice),
+            500,
+            0.001 ether,
+            30 minutes,
+            2 ether,
+            5,
+            aliceProof
+        );
+    }
+
+    function test_FailsIfRecipientIsZeroAddress() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Zero_Address.selector));
+        swapper.performSwap{value: 2 ether}(
+            wEthAddress,
+            usdcAddress,
+            address(0),
+            500,
+            0.001 ether,
+            30 minutes,
+            2 ether,
+            5,
+            aliceProof
+        );
+    }
+
+    function test_FailsIfInvalidFeeTier() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Invalid_Fee_Tier.selector));
+        swapper.performSwap{value: 2 ether}(
+            wEthAddress,
+            usdcAddress,
+            address(alice),
+            100,
+            0.001 ether,
+            30 minutes,
+            2 ether,
+            5,
+            aliceProof
+        );
+    }
+
+    function test_FailsIfInvalidSwapDeadline() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Invalid_Swap_Deadline.selector));
+        swapper.performSwap{value: 2 ether}(
+            wEthAddress,
+            usdcAddress,
+            address(alice),
+            500,
+            0.001 ether,
+            31 minutes,
+            2 ether,
+            5,
+            aliceProof
+        );
+    }
+
+    function test_FailsIfInvalidAmountIn() public {
+        vm.startPrank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Invalid_Amount_In.selector));
+        swapper.performSwap{value: 0}(
+            usdcAddress,
+            daiAddress,
+            address(alice),
+            500,
+            0.001 ether,
+            30 minutes,
+            0,
+            5,
+            aliceProof
+        );
+    }
+
+    function test_FailsIfSlippageAmountGreaterThan100() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Invalid_Slippage_Amount.selector));
+        swapper.performSwap{value: 2 ether}(
+            wEthAddress,
+            usdcAddress,
+            address(alice),
+            500,
+            0.001 ether,
+            30 minutes,
+            2 ether,
+            101,
+            aliceProof
+        );
+    }
+
     function test_PerformSwapFailsIfNotOnWhitelist() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(Invalid_Proof.selector));
